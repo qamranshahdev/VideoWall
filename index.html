@@ -3,120 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="referrer" content="no-referrer-when-downgrade">
-    <title>Enterprise Multi-Media Command Center</title>
+    <title>Enterprise Command Center</title>
     <style>
-        :root {
-            --bg: #000;
-            --panel: rgba(15, 15, 15, 0.98);
-            --accent: #007bff;
-            --danger: #ff3b30;
-            --text: #ffffff;
-        }
-
-        body, html { 
-            background: var(--bg); color: var(--text); margin: 0; padding: 0;
-            overflow: hidden; width: 100vw; height: 100vh;
-            font-family: 'Segoe UI', system-ui, sans-serif; 
-        }
-
-        /* --- AUTO-HIDE HEADER --- */
-        .control-panel { 
-            padding: 12px 25px; background: var(--panel); 
-            border-bottom: 1px solid #333; display: flex; 
-            align-items: center; justify-content: space-between;
-            position: fixed; top: 0; left: 0; width: 100%;
-            z-index: 1000; transition: transform 0.4s ease, opacity 0.3s;
-            box-sizing: border-box;
-        }
+        :root { --bg: #000; --panel: rgba(15, 15, 15, 0.98); --accent: #007bff; --danger: #ff3b30; --text: #ffffff; }
+        body, html { background: var(--bg); color: var(--text); margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; font-family: 'Segoe UI', sans-serif; }
         
+        /* LOGIN OVERLAY */
+        #login-overlay {
+            position: fixed; inset: 0; background: #000; z-index: 10000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        #login-overlay input { padding: 12px; width: 250px; background: #222; border: 1px solid #444; color: #fff; border-radius: 5px; text-align: center; font-size: 18px; }
+        
+        /* HEADER */
+        .control-panel { 
+            padding: 12px 25px; background: var(--panel); border-bottom: 1px solid #333; 
+            display: flex; align-items: center; justify-content: space-between;
+            position: fixed; top: 0; left: 0; width: 100%; z-index: 1000; 
+            transition: transform 0.4s ease, opacity 0.3s; box-sizing: border-box;
+        }
         .user-idle .control-panel { transform: translateY(-100%); opacity: 0; }
         .user-idle { cursor: none; }
-
         .group { display: flex; align-items: center; gap: 12px; }
-
-        input { 
-            padding: 8px 15px; width: 280px; background: #222; 
-            color: white; border: 1px solid #444; border-radius: 4px; outline: none;
-        }
-        button { 
-            padding: 8px 15px; cursor: pointer; border-radius: 4px; 
-            border: none; font-weight: 600; font-size: 12px; 
-            background: #333; color: var(--text); transition: 0.2s;
-        }
-        button:hover { background: #444; }
+        input.nav-input { padding: 8px 15px; width: 280px; background: #222; color: white; border: 1px solid #444; border-radius: 4px; outline: none; }
+        button { padding: 8px 15px; cursor: pointer; border-radius: 4px; border: none; font-weight: 600; font-size: 12px; background: #333; color: var(--text); transition: 0.2s; }
         .btn-primary { background: var(--accent); color: white; }
         .btn-danger { color: var(--danger); }
-
         select { padding: 8px; background: #222; color: white; border: 1px solid #444; border-radius: 4px; }
 
-        /* --- SEAMLESS GRID SYSTEM --- */
-        #video-grid { 
-            display: grid; width: 100vw; height: 100vh;
-            margin: 0; padding: 0; gap: 0;
-        }
-        
+        /* GRID */
+        #video-grid { display: grid; width: 100vw; height: 100vh; margin: 0; padding: 0; gap: 0; }
         .grid-2 { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
         .grid-3 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); }
         .grid-4 { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); }
         .grid-3-3 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
 
-        .video-wrapper { 
-            position: relative; background: #000; width: 100%; height: 100%; 
-            overflow: hidden; border: 0.5px solid #111;
-        }
-
-        .video-wrapper iframe, .video-wrapper object { 
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%;
-            border: none; background: #000;
-        }
-
-        .yt-frame { object-fit: cover; pointer-events: auto; }
-
-        /* --- OVERLAYS --- */
-        .vid-overlay {
-            position: absolute; top: 10px; right: 10px; 
-            display: flex; gap: 8px; opacity: 0; transition: 0.3s; z-index: 100;
-        }
+        .video-wrapper { position: relative; background: #000; width: 100%; height: 100%; overflow: hidden; border: 0.1px solid #111; }
+        .video-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+        
+        /* HOVER CONTROLS */
+        .vid-overlay { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; opacity: 0; transition: 0.3s; z-index: 100; }
         .video-wrapper:hover .vid-overlay { opacity: 1; }
-        .mini-btn { 
-            padding: 4px 10px; font-size: 11px; 
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
-            border: 1px solid rgba(255,255,255,0.2); 
-        }
+        .mini-btn { padding: 4px 10px; font-size: 11px; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.2); }
     </style>
 </head>
 <body class="user-active">
 
-    <div id="show-zone" onmousemove="resetIdle()"></div>
+    <div id="login-overlay">
+        <h2 style="margin-bottom: 20px; font-weight: 300;">Authorized Personnel Only</h2>
+        <input type="password" id="pass-input" placeholder="Enter Access Key" onkeydown="if(event.key==='Enter') checkPass()">
+    </div>
 
-    <div id="menu" class="control-panel">
+    <div id="menu" class="control-panel" style="display:none;">
         <div class="group">
-            <input type="text" id="vUrl" placeholder="YouTube URL or Website (https://...)">
+            <input type="text" id="vUrl" class="nav-input" placeholder="YouTube URL or Website">
             <button class="btn-primary" onclick="addSource()">Add Source</button>
             <select id="layoutSelect" onchange="updateLayout()">
-                <option value="grid-2">4 View (2x2)</option>
-                <option value="grid-3">6 View (3x2)</option>
-                <option value="grid-4">8 View (4x2)</option>
-                <option value="grid-3-3">9 View (3x3)</option>
+                <option value="grid-2">2x2 Matrix</option>
+                <option value="grid-3">3x2 Matrix</option>
+                <option value="grid-4">4x2 Matrix</option>
+                <option value="grid-3-3">3x3 Matrix</option>
             </select>
         </div>
-        
         <div class="group">
-            <button onclick="playAll()">▶ Play All YT</button>
-            <button onclick="syncAll()">🔄 Sync YT</button>
-            <button onclick="muteAll(true)">🔇 Mute All YT</button>
+            <button onclick="playAll()">▶ Play All</button>
+            <button onclick="syncAll()">🔄 Sync All</button>
+            <button onclick="muteAll(true)">🔇 Mute All</button>
             <button class="btn-danger" onclick="clearGrid()">Clear All</button>
+            <button onclick="logout()">Logout</button>
         </div>
     </div>
 
-    <div id="video-grid" class="grid-2"></div>
+    <div id="video-grid" class="grid-2" style="display:none;"></div>
 
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
+        const ACCESS_KEY = "CEO-QATAR-2026"; // <--- CHANGE YOUR PASSWORD HERE
         let players = {};
         let idleTimer;
 
+        // AUTH LOGIC
+        function checkPass() {
+            const val = document.getElementById('pass-input').value;
+            if(val === ACCESS_KEY) {
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('menu').style.display = 'flex';
+                document.getElementById('video-grid').style.display = 'grid';
+                sessionStorage.setItem('authenticated', 'true');
+                initSession();
+            } else { alert("Access Denied"); }
+        }
+
+        if(sessionStorage.getItem('authenticated') === 'true') {
+            document.addEventListener("DOMContentLoaded", () => {
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('menu').style.display = 'flex';
+                document.getElementById('video-grid').style.display = 'grid';
+                initSession();
+            });
+        }
+
+        function logout() { sessionStorage.removeItem('authenticated'); location.reload(); }
+
+        // CORE LOGIC
         function resetIdle() {
             document.body.classList.remove('user-idle');
             clearTimeout(idleTimer);
@@ -124,114 +113,54 @@
         }
         document.addEventListener('mousemove', resetIdle);
 
-        window.onload = () => {
-            const saved = JSON.parse(localStorage.getItem('finalHybridWall') || "[]");
+        function initSession() {
+            const saved = JSON.parse(localStorage.getItem('secureWallVids') || "[]");
             saved.forEach((url, i) => setTimeout(() => addSource(url), i * 400));
-        };
-
-        function updateLayout() {
-            document.getElementById('video-grid').className = document.getElementById('layoutSelect').value;
         }
+
+        function updateLayout() { document.getElementById('video-grid').className = document.getElementById('layoutSelect').value; }
 
         function addSource(savedUrl = null) {
             const input = document.getElementById('vUrl');
             const url = savedUrl || input.value;
             if (!url) return;
-
             const videoId = extractID(url);
             const grid = document.getElementById('video-grid');
             const pId = 'p-' + Date.now() + Math.floor(Math.random()*100);
-            
             const wrapper = document.createElement('div');
             wrapper.className = 'video-wrapper';
             wrapper.id = 'wrap-' + pId;
 
             if (videoId) {
-                // YOUTUBE MODE
-                wrapper.innerHTML = `
-                    <div class="vid-overlay">
-                        <button class="mini-btn" onclick="toggleMute('${pId}')">Mute</button>
-                        <button class="mini-btn btn-danger" onclick="removeSource('${pId}')">✕</button>
-                    </div>
-                    <div id="${pId}" class="yt-frame"></div>
-                `;
+                wrapper.innerHTML = `<div class="vid-overlay"><button class="mini-btn" onclick="toggleMute('${pId}')">Mute</button><button class="mini-btn btn-danger" onclick="removeSource('${pId}')">✕</button></div><div id="${pId}"></div>`;
                 grid.appendChild(wrapper);
-
                 players[pId] = new YT.Player(pId, {
                     host: 'https://www.youtube-nocookie.com',
                     height: '100%', width: '100%', videoId: videoId,
-                    playerVars: { 
-                        'enablejsapi': 1, 
-                        'origin': window.location.origin, 
-                        'rel': 0, 
-                        'modestbranding': 1,
-                        'fs': 1 // Enable Fullscreen in YT Player
-                    },
+                    playerVars: { 'enablejsapi': 1, 'origin': window.location.origin, 'rel': 0, 'modestbranding': 1, 'fs': 1 },
                     events: { 'onReady': saveSession }
                 });
             } else {
-                // WEBSITE MODE - Added 'allowfullscreen' and 'allow-presentation'
-                wrapper.innerHTML = `
-                    <div class="vid-overlay">
-                        <button class="mini-btn" onclick="refreshFrame('${pId}')">Reload</button>
-                        <button class="mini-btn btn-danger" onclick="removeSource('${pId}')">✕</button>
-                    </div>
-                    <iframe src="${url}" id="${pId}" class="web-frame" 
-                        sandbox="allow-forms allow-scripts allow-same-origin allow-presentation allow-popups"
-                        allow="fullscreen; autoplay; encrypted-media; picture-in-picture"
-                        allowfullscreen></iframe>
-                `;
+                wrapper.innerHTML = `<div class="vid-overlay"><button class="mini-btn" onclick="document.getElementById('${pId}').src=document.getElementById('${pId}').src">Reload</button><button class="mini-btn btn-danger" onclick="removeSource('${pId}')">✕</button></div><iframe src="${url}" id="${pId}" allowfullscreen sandbox="allow-forms allow-scripts allow-same-origin allow-presentation allow-popups"></iframe>`;
                 grid.appendChild(wrapper);
                 saveSession();
             }
             if(!savedUrl) input.value = '';
         }
 
-        function refreshFrame(id) {
-            const frame = document.getElementById(id);
-            frame.src = frame.src;
-        }
-
-        function removeSource(id) {
-            document.getElementById('wrap-' + id).remove();
-            if (players[id]) delete players[id];
-            saveSession();
-        }
-
-        function toggleMute(id) {
-            const p = players[id];
-            if (p && p.isMuted) p.isMuted() ? p.unMute() : p.mute();
-        }
-
+        function removeSource(id) { document.getElementById('wrap-' + id).remove(); if (players[id]) delete players[id]; saveSession(); }
+        function toggleMute(id) { const p = players[id]; if (p && p.isMuted) p.isMuted() ? p.unMute() : p.mute(); }
         function playAll() { Object.values(players).forEach(p => p.playVideo()); }
         function muteAll(status) { Object.values(players).forEach(p => status ? p.mute() : p.unMute()); }
-        function syncAll() {
-            const pArr = Object.values(players);
-            if (pArr.length > 0) {
-                const masterTime = pArr[0].getCurrentTime();
-                pArr.forEach(p => p.seekTo(masterTime, true));
-            }
-        }
-
-        function saveSession() {
+        function syncAll() { const pArr = Object.values(players); if (pArr.length > 0) { const t = pArr[0].getCurrentTime(); pArr.forEach(p => p.seekTo(t, true)); } }
+        function saveSession() { 
             const urls = [];
             Object.values(players).forEach(p => { if (p.getVideoUrl) urls.push(p.getVideoUrl()); });
-            document.querySelectorAll('.web-frame').forEach(f => urls.push(f.src));
-            localStorage.setItem('finalHybridWall', JSON.stringify(urls));
+            document.querySelectorAll('iframe').forEach(f => { if(!f.id.includes('p-')) urls.push(f.src); });
+            localStorage.setItem('secureWallVids', JSON.stringify(urls)); 
         }
-
-        function clearGrid() {
-            if(confirm("Clear wall?")) {
-                document.getElementById('video-grid').innerHTML = '';
-                players = {};
-                localStorage.removeItem('finalHybridWall');
-            }
-        }
-
-        function extractID(url) {
-            const match = url.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/);
-            return (match && match[1]) ? match[1] : null;
-        }
+        function clearGrid() { if(confirm("Clear wall?")) { document.getElementById('video-grid').innerHTML = ''; players = {}; localStorage.removeItem('secureWallVids'); } }
+        function extractID(url) { const match = url.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/); return (match && match[1]) ? match[1] : null; }
         function onYouTubeIframeAPIReady() {}
     </script>
 </body>
