@@ -8,13 +8,6 @@
         :root { --bg: #000; --panel: rgba(15, 15, 15, 0.98); --accent: #007bff; --danger: #ff3b30; --text: #ffffff; }
         body, html { background: var(--bg); color: var(--text); margin: 0; padding: 0; overflow: hidden; width: 100vw; height: 100vh; font-family: 'Segoe UI', sans-serif; }
         
-        /* LOGIN OVERLAY */
-        #login-overlay {
-            position: fixed; inset: 0; background: #000; z-index: 10000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-        #login-overlay input { padding: 12px; width: 250px; background: #222; border: 1px solid #444; color: #fff; border-radius: 5px; text-align: center; font-size: 18px; }
-        
         /* HEADER */
         .control-panel { 
             padding: 12px 25px; background: var(--panel); border-bottom: 1px solid #333; 
@@ -49,12 +42,7 @@
 </head>
 <body class="user-active">
 
-    <div id="login-overlay">
-        <h2 style="margin-bottom: 20px; font-weight: 300;">Authorized Personnel Only</h2>
-        <input type="password" id="pass-input" placeholder="Enter Access Key" onkeydown="if(event.key==='Enter') checkPass()">
-    </div>
-
-    <div id="menu" class="control-panel" style="display:none;">
+    <div id="menu" class="control-panel">
         <div class="group">
             <input type="text" id="vUrl" class="nav-input" placeholder="YouTube URL or Website">
             <button class="btn-primary" onclick="addSource()">Add Source</button>
@@ -66,44 +54,20 @@
             </select>
         </div>
         <div class="group">
+            <button class="btn-primary" onclick="forceHighQuality()">⚡ Max Quality</button>
             <button onclick="playAll()">▶ Play All</button>
             <button onclick="syncAll()">🔄 Sync All</button>
             <button onclick="muteAll(true)">🔇 Mute All</button>
             <button class="btn-danger" onclick="clearGrid()">Clear All</button>
-            <button onclick="logout()">Logout</button>
         </div>
     </div>
 
-    <div id="video-grid" class="grid-2" style="display:none;"></div>
+    <div id="video-grid" class="grid-2"></div>
 
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
-        const ACCESS_KEY = "qamran"; 
         let players = {};
         let idleTimer;
-
-        // AUTH LOGIC
-        function checkPass() {
-            const val = document.getElementById('pass-input').value;
-            if(val === ACCESS_KEY) {
-                document.getElementById('login-overlay').style.display = 'none';
-                document.getElementById('menu').style.display = 'flex';
-                document.getElementById('video-grid').style.display = 'grid';
-                sessionStorage.setItem('authenticated', 'true');
-                initSession();
-            } else { alert("Access Denied"); }
-        }
-
-        if(sessionStorage.getItem('authenticated') === 'true') {
-            document.addEventListener("DOMContentLoaded", () => {
-                document.getElementById('login-overlay').style.display = 'none';
-                document.getElementById('menu').style.display = 'flex';
-                document.getElementById('video-grid').style.display = 'grid';
-                initSession();
-            });
-        }
-
-        function logout() { sessionStorage.removeItem('authenticated'); location.reload(); }
 
         // CORE LOGIC
         function resetIdle() {
@@ -113,12 +77,27 @@
         }
         document.addEventListener('mousemove', resetIdle);
 
+        window.onload = () => {
+            initSession();
+        };
+
         function initSession() {
             const saved = JSON.parse(localStorage.getItem('secureWallVids') || "[]");
             saved.forEach((url, i) => setTimeout(() => addSource(url), i * 400));
         }
 
         function updateLayout() { document.getElementById('video-grid').className = document.getElementById('layoutSelect').value; }
+
+        function forceHighQuality() {
+            Object.values(players).forEach(p => {
+                if (p && p.setPlaybackQuality) {
+                    p.setPlaybackQuality('hd1080'); 
+                    p.setPlaybackQuality('highres');
+                    const currentTime = p.getCurrentTime();
+                    p.seekTo(currentTime, true);
+                }
+            });
+        }
 
         function addSource(savedUrl = null) {
             const input = document.getElementById('vUrl');
@@ -137,8 +116,25 @@
                 players[pId] = new YT.Player(pId, {
                     host: 'https://www.youtube-nocookie.com',
                     height: '100%', width: '100%', videoId: videoId,
-                    playerVars: { 'enablejsapi': 1, 'origin': window.location.origin, 'rel': 0, 'modestbranding': 1, 'fs': 1 },
-                    events: { 'onReady': saveSession }
+                    playerVars: { 
+                        'enablejsapi': 1, 
+                        'origin': window.location.origin, 
+                        'rel': 0, 
+                        'modestbranding': 1, 
+                        'fs': 1,
+                        'vq': 'hd1080' 
+                    },
+                    events: { 
+                        'onReady': (e) => {
+                            e.target.setPlaybackQuality('hd1080');
+                            saveSession();
+                        },
+                        'onStateChange': (e) => {
+                            if (e.data === YT.PlayerState.PLAYING) {
+                                e.target.setPlaybackQuality('hd1080');
+                            }
+                        }
+                    }
                 });
             } else {
                 wrapper.innerHTML = `<div class="vid-overlay"><button class="mini-btn" onclick="document.getElementById('${pId}').src=document.getElementById('${pId}').src">Reload</button><button class="mini-btn btn-danger" onclick="removeSource('${pId}')">✕</button></div><iframe src="${url}" id="${pId}" allowfullscreen sandbox="allow-forms allow-scripts allow-same-origin allow-presentation allow-popups"></iframe>`;
@@ -153,17 +149,38 @@
         function playAll() { Object.values(players).forEach(p => p.playVideo()); }
         function muteAll(status) { Object.values(players).forEach(p => status ? p.mute() : p.unMute()); }
         function syncAll() { const pArr = Object.values(players); if (pArr.length > 0) { const t = pArr[0].getCurrentTime(); pArr.forEach(p => p.seekTo(t, true)); } }
+        
         function saveSession() { 
             const urls = [];
             Object.values(players).forEach(p => { if (p.getVideoUrl) urls.push(p.getVideoUrl()); });
             document.querySelectorAll('iframe').forEach(f => { if(!f.id.includes('p-')) urls.push(f.src); });
             localStorage.setItem('secureWallVids', JSON.stringify(urls)); 
         }
+
         function clearGrid() { if(confirm("Clear wall?")) { document.getElementById('video-grid').innerHTML = ''; players = {}; localStorage.removeItem('secureWallVids'); } }
         function extractID(url) { const match = url.match(/(?:https?:\/{2})?(?:w{3}\.)?youtu(?:be)?\.(?:com|be)(?:\/watch\?v=|\/)([^\s&]+)/); return (match && match[1]) ? match[1] : null; }
-        function onYouTubeIframeAPIReady() {}
+
+        function startAdMonitor() {
+            setInterval(() => {
+                Object.values(players).forEach(p => {
+                    if (p && p.getPlayerState) {
+                        if (p.getPlayerState() === 3) {
+                            p.playVideo(); 
+                        }
+                        try {
+                            if (p.getAdState && p.getAdState() === 1) {
+                                p.mute();
+                                p.seekTo(p.getDuration(), true);
+                            }
+                        } catch(e) {}
+                    }
+                });
+            }, 1000);
+        }
+
+        function onYouTubeIframeAPIReady() {
+            startAdMonitor();
+        }
     </script>
 </body>
 </html>
-
-
